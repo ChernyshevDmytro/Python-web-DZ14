@@ -9,9 +9,12 @@ from itemadapter import ItemAdapter
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import requests
+import lxml.html
+from bs4 import BeautifulSoup
 from .models import Person, Keywords, Quotes
 
-
+start_urls = 'http://quotes.toscrape.com/'
 
 
 class Dz14Pipeline(object):
@@ -19,44 +22,49 @@ class Dz14Pipeline(object):
     def process_item(self, item, authors):        
         engine = create_engine('sqlite:///dz14.db') 
         DBSession = sessionmaker(bind=engine)
-        session = DBSession()
-        
+        session = DBSession()       
         
         #print(f"sssssssssssssssssssssss{item}")
         try:
-            
-
-            if item['author']:
-                print(f"fffffffffff{item['author']}")
+            excist = 0
+            if item['author']:              
                 name  = item['author']
-                name=name[0]
-                #name.replace("[", "")
-                #name.replace("]", "")
-                #name.replace("'", "")
-                print(f"fffffffffff {name}")     
-                person=Person(author_name = f"{name}")
-                session.add(person)
-                session.commit()
-                session.close()                    
-            if item['quote'] and not person.quotes:
-                print(f"qqqqqq{item['quote']}")
-                print(type(f"qqqq{item['quote']}"))
-                person.quotes = Quotes(quote= str(item['quote'])) 
-            if item['keywords'] and person.keywords:
-                for i in item['keywords']:
-                    person.keywords.append(Keywords(keyword=f"{i}"))
-            if item['keywords'] and not person.keywords:
-                for i in item['keywords']:
-                    person.keywords = Keywords(keyword=f"{i}") 
+                name=name[0]                
+            for person in session.query(Person).all():
+                if f"{name}" == person.author_name:
+                    excist=1
+            if excist == 0:
+                additional_info=item['additional_info']
+                additional_info_clean=additional_info[10:-13]+"/"
+                additional_info_clean_full_path=start_urls+additional_info_clean
+                
+                response = requests.get(additional_info_clean_full_path)
+                soup = BeautifulSoup(response.text, 'lxml')
+                birthday= soup.find(class_="author-born-date").get_text(strip=True)
+                place= soup.find(class_="author-born-location").get_text(strip=True)                             
+                new_person = Person(author_name = f"{name}", additional_info = f"{additional_info_clean_full_path}", birthday_and_place_of_born= f"{birthday} {place}")
 
-                            
+                print(f"BBBBBBBBBBBBBBBB {additional_info_clean_full_path}")
+                session.add(new_person)
+                session.commit()
+                   
+            if item['quote']:                
+                cleanquote=item['quote']
+                cleanquote=cleanquote[1:-1]              
+                quotes=Quotes(quote= f"{cleanquote}", author_id= int(new_person.id)) 
+                session.add(quotes)
+
+            if item['keywords']:
+                for i in item['keywords']:
+                    keywords = Keywords(keyword=f"{i}", author_id= int(new_person.id)) 
+                    session.add(keywords)     
+                
             
-            #session.add(person)
-            #session.commit()
+            session.commit()
 
         finally:
            print("aaa")
-           #session.close()
+           session.close()
         
         return item
 #a= Dz14Pipeline()

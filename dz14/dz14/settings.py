@@ -12,8 +12,8 @@ BOT_NAME = 'dz14'
 SPIDER_MODULES = ['dz14.spiders']
 NEWSPIDER_MODULE = 'dz14.spiders'
 
-FEED_FORMAT="db"
-FEED_URI="dz14.db"
+#FEED_FORMAT="db"
+#FEED_URI="dz14.db"
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'dz14 (+http://www.yourdomain.com)'
