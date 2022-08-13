@@ -14,57 +14,64 @@ import lxml.html
 from bs4 import BeautifulSoup
 from .models import Person, Keywords, Quotes
 
-start_urls = 'http://quotes.toscrape.com/'
+start_urls = "http://quotes.toscrape.com/"
 
 
 class Dz14Pipeline(object):
-
-    def process_item(self, item, authors):        
-        engine = create_engine('sqlite:///dz14.db') 
+    def process_item(self, item, authors):
+        engine = create_engine("sqlite:///dz14.db")
         DBSession = sessionmaker(bind=engine)
-        session = DBSession()       
-        
-        #print(f"sssssssssssssssssssssss{item}")
+        session = DBSession()
+
+        # print(f"sssssssssssssssssssssss{item}")
         try:
             excist = 0
-            if item['author']:              
-                name  = item['author']
-                name=name[0]                
+            if item["author"]:
+                name = item["author"]
+                name = name[0]
             for person in session.query(Person).all():
                 if f"{name}" == person.author_name:
-                    excist=1
+                    excist = 1
             if excist == 0:
-                additional_info=item['additional_info']
-                additional_info_clean=additional_info[10:-13]+"/"
-                additional_info_clean_full_path=start_urls+additional_info_clean
-                
+                additional_info = item["additional_info"]
+                additional_info_clean = additional_info[10:-13] + "/"
+                additional_info_clean_full_path = start_urls + additional_info_clean
+
                 response = requests.get(additional_info_clean_full_path)
-                soup = BeautifulSoup(response.text, 'lxml')
-                birthday= soup.find(class_="author-born-date").get_text(strip=True)
-                place= soup.find(class_="author-born-location").get_text(strip=True)                             
-                new_person = Person(author_name = f"{name}", additional_info = f"{additional_info_clean_full_path}", birthday_and_place_of_born= f"{birthday} {place}")
+                soup = BeautifulSoup(response.text, "lxml")
+                birthday = soup.find(class_="author-born-date").get_text(strip=True)
+                place = soup.find(class_="author-born-location").get_text(strip=True)
+                new_person = Person(
+                    author_name=f"{name}",
+                    additional_info=f"{additional_info_clean_full_path}",
+                    birthday_and_place_of_born=f"{birthday} {place}",
+                )
 
                 print(f"BBBBBBBBBBBBBBBB {additional_info_clean_full_path}")
                 session.add(new_person)
                 session.commit()
-                   
-            if item['quote']:                
-                cleanquote=item['quote']
-                cleanquote=cleanquote[1:-1]              
-                quotes=Quotes(quote= f"{cleanquote}", author_id= int(new_person.id)) 
+
+            if item["quote"]:
+                cleanquote = item["quote"]
+                cleanquote = cleanquote[1:-1]
+                quotes = Quotes(quote=f"{cleanquote}", author_id=int(new_person.id))
                 session.add(quotes)
 
-            if item['keywords']:
-                for i in item['keywords']:
-                    keywords = Keywords(keyword=f"{i}", author_id= int(new_person.id)) 
-                    session.add(keywords)     
-                
-            
+            if item["keywords"]:
+                kw = []
+                for i in item["keywords"]:
+                    keywords = Keywords(keyword=f"{i}")
+                    kw.append(keywords)
+                    session.add(keywords)
+                quotes.keywords = kw
+
             session.commit()
 
         finally:
-           print("aaa")
-           session.close()
-        
+            print("aaa")
+            session.close()
+
         return item
-#a= Dz14Pipeline()
+
+
+# a= Dz14Pipeline()
